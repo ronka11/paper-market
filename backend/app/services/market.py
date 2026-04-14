@@ -18,53 +18,77 @@ def format_ticker(ticker: str, exchange: str = "US") -> str:
     return ticker
 
 
-async def fetch_and_store_history (ticker: str, exchange: str, period: str, db: AsyncSession) -> list[StockPrice]:
+async def fetch_and_store_history (
+        ticker: str, 
+        exchange: str, 
+        period: str, 
+        db: AsyncSession) -> list[StockPrice]:
     """
     Pull OHLCV from yfinance, upsert into stock_prices, return records.
     period examples: "1mo", "3mo", "6mo", "1y"
     """
     formatted = format_ticker(ticker, exchange)
+
     data = yf.download(formatted, period=period, progress=False, auto_adjust=True)
 
     if data.empty:
         return []
-    
-    records = []
-    for date, row in data.iterrows():
-        # Check if this ticker already exists
-        existing = await db.execute(
-            select(StockPrice).where(
-                StockPrice.ticker == formatted, 
-                StockPrice.data == data.to_pydatetime()
-            )
-        )
-        existing = existing.scalar_one_or_none()
 
-        if existing:
-            records.append(existing)
+    if hasattr(data.columns, "levels"):
+        data.columns = data.columns.get_level_values(0)
+
+    data = data.reset_index()
+
+
+    # 1 query → get all existing dates
+    # Loop → in-memory checks (set)
+    # 1 batch insert
+    # 1 query → fetch results
+    result = await db.execute(
+        select(StockPrice.date).where(StockPrice.ticker == formatted)
+    )
+    existing_dates = set(result.scalars().all())
+
+    new_records = []
+    all_records = []
+
+    for row in data.itertuples():
+        dt = row.Date.to_pydatetime()
+
+        if dt in existing_dates:
             continue
 
         price = StockPrice(
             ticker=formatted,
-            date=date.to_pydatetime(),
-            open=float(row["Open"]),
-            high=float(row["High"]),
-            low=float(row["Low"]),
-            close=float(row["Close"]),
-            volume=int(row["Volume"]),
+            date=dt,
+            open=float(row.Open),
+            high=float(row.High),
+            low=float(row.Low),
+            close=float(row.Close),
+            volume=int(row.Volume),
         )
-        db.add(price)
-        records.append(price)
 
-    await db.commit()
-    return records
+        new_records.append(price)
+        all_records.append(price)
+
+    if new_records:
+        db.add_all(new_records)
+        await db.commit()
+
+    result = await db.execute(
+        select(StockPrice)
+        .where(StockPrice.ticker == formatted)
+        .order_by(StockPrice.date.asc())
+    )
+
+    return result.scalars().all()
 
 
 async def get_stored_history (ticker: str, exchange: str, db: AsyncSession) -> list[StockPrice]:
     """
     Fetch what we already have in DB for this ticker.
     """
-    formatted = format_ticker
+    formatted = format_ticker(ticker, exchange)
     result = await db.execute(
         select(StockPrice)
         .where(StockPrice.ticker == formatted)
@@ -91,4 +115,3 @@ def get_live_quote (ticker: str, exchange: str) -> dict:
         "volume": info.get("volume"),
         "currency": info.get("currency", "USD"),
     }
-
