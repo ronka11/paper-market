@@ -22,3 +22,9 @@ async def health():
     return {"status": "ok"}
 
 app.include_router(market.router, prefix="/market", tags=["market"])
+
+
+from app.routers import market, portfolio
+
+app.include_router(market.router, prefix="/market", tags=["market"])
+app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
