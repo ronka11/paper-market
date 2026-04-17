@@ -73,6 +73,8 @@ def scrape_reddit_for_all_tickers():
         async with AsyncSessionLocal() as db:
             for ticker in base_tickers:
                 await scrape_ticker(ticker, db)
+                print(f"Cooling down after scraping {ticker}...")
+                await asyncio.sleep(5)
 
         return {"scraped": len(base_tickers)}
 
@@ -86,6 +88,8 @@ def scrape_reddit_for_ticker(ticker: str):
         from app.services.sentiment import scrape_ticker
         async with AsyncSessionLocal() as db:
             posts = await scrape_ticker(ticker, db)
-        return {"ticker": ticker, "posts_stored": len(posts)}
+        
+        num_posts = len(posts) if posts is not None else 0
+        return {"ticker": ticker, "posts_stored": num_posts}
 
     return run_async(_run())

@@ -21,10 +21,18 @@ app.add_middleware(
 async def health():
     return {"status": "ok"}
 
+# MARKET
 app.include_router(market.router, prefix="/market", tags=["market"])
 
 
+# PORTFOLIO
 from app.routers import market, portfolio
 
 app.include_router(market.router, prefix="/market", tags=["market"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
+
+
+# SENTIMENT
+from app.routers import market, portfolio, sentiment
+
+app.include_router(sentiment.router, prefix="/sentiment", tags=["sentiment"])
