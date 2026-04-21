@@ -156,7 +156,7 @@ async def score_unscored_posts(db: AsyncSession) -> int:
 async def get_sentiment_summary(ticker: str, db: AsyncSession) -> dict:
     result = await db.execute(
         select(RedditPost)
-        .options(selectinload(RedditPost.sentiment))  # 🔧 FIX
+        .options(selectinload(RedditPost.sentiment))
         .where(RedditPost.ticker == ticker.upper())
     )
     posts = result.scalars().all()

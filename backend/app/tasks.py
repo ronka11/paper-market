@@ -93,3 +93,14 @@ def scrape_reddit_for_ticker(ticker: str):
         return {"ticker": ticker, "posts_stored": num_posts}
 
     return run_async(_run())
+
+
+@celery.task(name="app.tasks.fetch_index_data")
+def fetch_index_data():
+    async def _run():
+        from app.services.market import fetch_and_store_history
+        async with AsyncSessionLocal() as db:
+            await fetch_and_store_history("^NSEI", "US", "1y", db)
+            await fetch_and_store_history("^IXIC", "US", "1y", db)
+        return {"status": "done"}
+    return run_async(_run())
