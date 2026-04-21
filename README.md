@@ -11,6 +11,11 @@ paper market simulator
 
 
 ### todo
+- [x] database setup
+- [x] market
+- [x] portfolio
+- [x] sentiment
+- [x] langchain agents
 - [ ] loggings 
 - [ ] react frontend
 - [ ] backtesting methods
