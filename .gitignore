@@ -18,3 +18,6 @@ Thumbs.db
 
 # Celery beat
 celerybeat-schedule*
+
+# Learnings
+learnings.md
