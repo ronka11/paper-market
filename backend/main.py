@@ -1,7 +1,7 @@
-# backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.config import log
 from app.routers import market
 
 app = FastAPI(title="Paper Market API", debug=settings.DEBUG)
@@ -20,6 +20,8 @@ app.add_middleware(
 @app.get("/health") 
 async def health():
     return {"status": "ok"}
+log.info("FastAPI setup")
+
 
 # MARKET
 app.include_router(market.router, prefix="/market", tags=["market"])

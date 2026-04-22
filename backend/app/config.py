@@ -1,5 +1,5 @@
-# backend/app/config.py
 from pydantic_settings import BaseSettings
+import logging
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -17,5 +17,11 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+log = logging.getLogger("paper_market")
 
 settings = Settings()

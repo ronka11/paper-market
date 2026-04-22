@@ -2,6 +2,7 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models import Portfolio, Position, Order
+from app.config import log
 
 async def get_or_create_portfolio(
         session_key: str,
@@ -21,6 +22,7 @@ async def get_or_create_portfolio(
         await db.commit()
         await db.refresh(portfolio)
 
+    log.info("portfolio created/fetched")
     return portfolio
 
 
@@ -31,6 +33,7 @@ async def get_positions(
         select(Position).
         where(Position.portfolio_id == portfolio_id)
     )
+    log.info("get_positions called")
     return result.scalars().all()
 
 
@@ -41,6 +44,7 @@ async def get_orders(
         select(Order).where(Order.portfolio_id == portfolio_id)
         .order_by(Order.created_at.desc())
     )
+    log.info("get_orders called")
     return result.scalars().all()
 
 
@@ -54,7 +58,7 @@ async def place_order(
     fill_price = Decimal(str(fill_price))
     total_cost = fill_price * quantity
 
-    # Create the order record first
+    # create the order record first
     order = Order(
         portfolio_id=portfolio.id,
         ticker=ticker,
@@ -69,6 +73,7 @@ async def place_order(
         if portfolio.cash_balance < total_cost:
             order.status = "REJECTED"
             await db.commit()
+            log.info("order REJECTED - portfolio.cash_balance < total_cost")
             return order
         
         portfolio.cash_balance -= total_cost
@@ -80,6 +85,7 @@ async def place_order(
         if not position or position.quantity < quantity:
             order.status = "REJECTED"
             await db.commit()
+            log.info("order REJECTED - position.quantity < quantity")
             return order
         
         portfolio.cash_balance += total_cost
@@ -88,6 +94,7 @@ async def place_order(
     order.status = "FILLED"
     await db.commit()
     await db.refresh(order)
+    log.info("order FILLED")
     return order
 
 
@@ -171,8 +178,10 @@ def calculate_pnl(
             "realised_pnl": float(pos.realised_pnl),
         })
 
-    return {
+    pnl_res = {
         "positions": breakdown,
         "total_unrealised_pnl": float(total_unrealised),
         "total_realised_pnl": float(total_realised),
     }
+    log.info(f"calculate_pnl: {pnl_res}")
+    return pnl_res

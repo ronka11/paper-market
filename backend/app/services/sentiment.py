@@ -10,17 +10,8 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from app.config import settings
 from app.models import RedditPost, SentimentScore
 from sqlalchemy.orm import selectinload
+from app.config import log
 
-# ── Reddit client ─────────────────────────────────────────────────
-
-def get_reddit_client() -> praw.Reddit:
-    return praw.Reddit(
-        client_id=settings.REDDIT_CLIENT_ID,
-        client_secret=settings.REDDIT_CLIENT_SECRET,
-        user_agent=settings.REDDIT_USER_AGENT,
-    )
-
-# ── FinBERT (loaded once at module level, not per request) ────────
 
 FINBERT_MODEL = "ProsusAI/finbert"
 _tokenizer = None
@@ -49,17 +40,18 @@ def score_text(text: str) -> dict:
     probs = torch.softmax(outputs.logits, dim=1).squeeze().tolist()
 
     # FinBERT label order: positive, negative, neutral
-    return {
+    score_text_res = {
         "prob_positive": probs[0],
         "prob_negative": probs[1],
         "prob_neutral":  probs[2],
         "compound":      probs[0] - probs[1],  # simple sentiment score
     }
+    log.info(f"score_text: {score_text_res}")
+    return score_text_res
 
 
-# ── Scraper ───────────────────────────────────────────────────────
 
-SUBREDDITS = ["stocks", "investing", "wallstreetbets", "IndiaInvestments", "IndianStreetBets"]
+SUBREDDITS = ["stocks", "investing", "wallstreetbets", "IndiaInvestments", "IndianStreetBets", "DalalStreetTalks", "IndianStockMarket"]
 async def scrape_ticker(ticker: str, db: AsyncSession, limit: int = 10) -> list[RedditPost]:
     stored = []
     
@@ -126,6 +118,7 @@ async def scrape_ticker(ticker: str, db: AsyncSession, limit: int = 10) -> list[
                 continue
 
     await db.commit()
+    log.info(f"scrape_ticker: {stored}")
     return stored
 
 
@@ -172,7 +165,7 @@ async def get_sentiment_summary(ticker: str, db: AsyncSession) -> dict:
     avg_positive = sum(p.sentiment.prob_positive for p in scored) / len(scored)
     avg_negative = sum(p.sentiment.prob_negative for p in scored) / len(scored)
 
-    return {
+    sentiment_summary_res = {
         "ticker": ticker.upper(),
         "post_count": len(posts),
         "scored_count": len(scored),
@@ -181,3 +174,5 @@ async def get_sentiment_summary(ticker: str, db: AsyncSession) -> dict:
         "avg_negative": round(avg_negative, 4),
         "signal": "bullish" if avg_compound > 0.1 else "bearish" if avg_compound < -0.1 else "neutral",
     }
+    log.info(f"get_sentiment_summary: {sentiment_summary_res}")
+    return sentiment_summary_res

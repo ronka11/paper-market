@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 from app.models import StockPrice
+from app.config import log
 
 def format_ticker(ticker: str, exchange: str = "US") -> str:
     """
@@ -81,6 +82,7 @@ async def fetch_and_store_history (
         .order_by(StockPrice.date.asc())
     )
 
+    log.info(f"fetch_and_store_history: {result}")
     return result.scalars().all()
 
 
@@ -94,6 +96,7 @@ async def get_stored_history (ticker: str, exchange: str, db: AsyncSession) -> l
         .where(StockPrice.ticker == formatted)
         .order_by(StockPrice.date.asc())
     )
+    log.info(f"get_stored_history: {result}")
     return result.scalars().all()
 
 
@@ -105,7 +108,7 @@ def get_live_quote (ticker: str, exchange: str) -> dict:
     t = yf.Ticker(formatted)
     info = t.info
 
-    return {
+    live_quote_res = {
         "ticker": formatted,
         "name": info.get("longName", formatted),
         "price": info.get("currentPrice") or info.get("regularMarketPrice"),
@@ -115,3 +118,4 @@ def get_live_quote (ticker: str, exchange: str) -> dict:
         "volume": info.get("volume"),
         "currency": info.get("currency", "USD"),
     }
+    return live_quote_res

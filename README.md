@@ -16,7 +16,7 @@ paper market simulator
 - [x] portfolio
 - [x] sentiment
 - [x] langchain agents
-- [ ] loggings 
+- [x] loggings 
 - [ ] react frontend
 - [ ] backtesting methods
 

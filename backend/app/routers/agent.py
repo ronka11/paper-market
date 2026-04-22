@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.services.cache import get_cache, set_cache
 from app.agents.analyst import run_analysis
+from app.config import log
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ async def analyse_ticker(
     if not force_refresh:
         cached = await get_cache(cache_key)
         if cached:
+            log.info(f"analyse_ticker cached: {cached}")
             return {**cached, "cached": True}
 
     try:
@@ -31,6 +33,8 @@ async def analyse_ticker(
     if "error" not in analysis:
         await set_cache(cache_key, analysis, ttl_seconds=CACHE_TTL)
 
+    log.info(f"analyse_ticker: {analysis}")
+    ## ** converts key-value pairs into new dict    
     return {**analysis, "cached": False}
 
 
@@ -51,7 +55,9 @@ async def get_indices(db: AsyncSession = Depends(get_db)):
             for r in records[-90:]  # last 90 days for the chart
         ]
 
-    return {
+    indices_res = {
         "nifty50": serialize(nifty),
         "nasdaq": serialize(nasdaq),
     }
+    log.info(f"get_indices: {indices_res}")
+    return indices_res

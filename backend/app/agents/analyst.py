@@ -7,6 +7,7 @@ from typing import TypedDict, Annotated
 import operator
 
 from app.config import settings
+from app.config import log
 
 
 llm = ChatOpenAI(
@@ -35,13 +36,15 @@ async def get_price_history(ticker: str, exchange: str = "US") -> str:
         week_ago = closes[0]
         trend_pct = ((latest - week_ago) / week_ago) * 100
 
-        return json.dumps({
+        price_history_res = json.dumps({
             "ticker": ticker,
             "latest_close": latest,
             "week_ago_close": week_ago,
             "trend_7d_pct": round(trend_pct, 2),
             "direction": "up" if trend_pct > 0 else "down",
         })
+        log.info(f"get_price_history:  {price_history_res}")
+        return price_history_res
 
     # return json.dumps(asyncio.get_event_loop().run_until_complete(_run()))
     # return json.dumps(asyncio.run(_run()))
@@ -59,6 +62,7 @@ async def get_sentiment(ticker: str) -> str:
 
     # result = asyncio.get_event_loop().run_until_complete(_run())
     # result = asyncio.run(_run())
+    log.info(f"get_sentiment: {json.dumps(result)}")
     return json.dumps(result)
 
 
@@ -81,6 +85,7 @@ async def get_portfolio_context(session_key: str) -> str:
         }
 
     # return json.dumps(asyncio.get_event_loop().run_until_complete(_run()))
+    log.info(f"get_portfolio_context: {json.dumps(result)}")
     return json.dumps(result)
 
 
@@ -118,6 +123,7 @@ Return ONLY the JSON object, no markdown, no extra text.""")
     messages = [system] + state["messages"]
     # response = llm_with_tools.invoke(messages)
     response = await llm_with_tools.ainvoke(messages)
+    log.info(f"analyst node: {response}")
     return {"messages": [response]}
 
 
