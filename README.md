@@ -1,5 +1,6 @@
 # paper-market
 paper market simulator
+An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE/BSE or US), it pulls real market data + Reddit sentiment, runs algorithmic strategies (pending), lets you simulate trades with virtual cash, and an LLM agent helps you reason about positions
 
 
 ## startup
