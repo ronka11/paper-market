@@ -3,11 +3,12 @@ paper market simulator
 
 
 ## startup
-1. activate venv
-2. uvicorn main:app --reload
-3. docker run -d -p 6379:6379 redis
-4. celery -A app.celery_app.celery worker --pool=solo --loglevel=info
-5. celery -A app.celery_app.celery beat --loglevel=info
+1. paper-market> activate venv
+2. paper-market> docker run -d -p 6379:6379 redis
+3. paper-market\backend> uvicorn main:app --reload
+4. paper-market\backend> celery -A app.celery_app.celery worker --pool=solo --loglevel=info
+5. paper-market\backend> celery -A app.celery_app.celery beat --loglevel=info
+6. paper-market\frontend> npm run dev
 
 
 ### todo
@@ -17,6 +18,15 @@ paper market simulator
 - [x] sentiment
 - [x] langchain agents
 - [x] loggings 
-- [ ] react frontend
+- [x] react frontend
 - [ ] backtesting methods
+- [ ] rpi deployement
 
+
+### improvements
+- [ ] dynamic charts, adjusting y axis scale according to time window
+- [ ] candlestick charts along with existing charts
+- [ ] project intro popup - aim, learnings
+- [ ] compare two stocks
+- [ ] better scraping of posts according to ticker and name
+- [ ] better search of stocks according to name
