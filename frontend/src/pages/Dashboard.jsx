@@ -118,7 +118,7 @@ function IndexPanel({ title, data }) {
           {change >= 0 ? "+" : ""}{change.toFixed(2)}%
         </span>
       </div>
-      <PriceChart data={data} height={160} color="auto" />
+      <PriceChart data={data} height={160} color="area" />
       <p className="muted" style={{ fontSize: "11px", marginTop: "8px", textAlign: "right" }}>
         last close {latest.close.toLocaleString()} · updated daily
       </p>

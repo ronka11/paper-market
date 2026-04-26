@@ -6,14 +6,6 @@ from app.tasks import scrape_reddit_for_ticker
 
 router = APIRouter()
 
-
-@router.post("/scrape/{ticker}")
-async def trigger_scrape(ticker: str):
-    """Kick off a background scrape for a ticker via Celery."""
-    task = scrape_reddit_for_ticker.delay(ticker)
-    return {"task_id": task.id, "ticker": ticker, "status": "queued"}
-
-
 @router.post("/score")
 async def trigger_scoring(db: AsyncSession = Depends(get_db)):
     """Score all unscored posts in DB."""

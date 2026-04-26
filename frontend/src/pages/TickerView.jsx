@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { useSession } from "../hooks/useSession"
-import { fetchHistory, fetchAnalysis, fetchOrders, triggerScrape } from "../api"
+import { fetchHistory, fetchAnalysis, fetchOrders} from "../api"
 import PriceChart from "../components/PriceChart"
 import AnalysisCard from "../components/AnalysisCard"
 import OrderForm from "../components/OrderForm"
@@ -56,11 +56,6 @@ export default function TickerView() {
     }
   }
 
-  async function handleScrape() {
-    await triggerScrape(ticker, sessionKey)
-    alert(`scrape queued for ${ticker} — check sentiment after a minute`)
-  }
-
   function reloadOrders() {
     fetchOrders(sessionKey).then(all =>
       setOrders(all.filter(o => o.ticker === ticker))
@@ -106,18 +101,11 @@ export default function TickerView() {
               {p}
             </button>
           ))}
-          <button
-            className="btn outline"
-            onClick={handleScrape}
-            style={{ marginLeft: "auto", padding: "4px 12px", fontSize: "12px" }}
-          >
-            scrape reddit
-          </button>
         </div>
 
         {histLoading
           ? <p className="muted" style={{ padding: "60px 0", textAlign: "center" }}>loading chart...</p>
-          : <PriceChart data={history} height={280} color="auto" />
+          : <PriceChart data={history} height={280} color="candle" />
         }
       </div>
 

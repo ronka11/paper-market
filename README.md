@@ -29,5 +29,4 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 - [ ] candlestick charts along with existing charts
 - [ ] project intro popup - aim, learnings
 - [ ] compare two stocks
-- [ ] better scraping of posts according to ticker and name
-- [ ] better search of stocks according to name
+- [ ] integrate tavily instead of reddit?

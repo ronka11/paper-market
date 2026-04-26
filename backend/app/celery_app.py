@@ -20,10 +20,10 @@ celery.conf.update(
             "task": "app.tasks.fetch_prices_for_all_tickers",
             "schedule": crontab(minute=0, hour="*/6"),
         },
-        # Scrape Reddit every 24 hours
-        "scrape-reddit-24h": {
+        # Scrape Reddit every 4 days
+        "scrape-reddit-4d": {
             "task": "app.tasks.scrape_reddit_for_all_tickers",
-            "schedule": crontab(minute=0, hour="*/24"),
+            "schedule": crontab(hour=2, minute=0, day_of_week="0,3,6"),  # Mon, Thu, Sun
         },
         # add to beat_schedule
         "fetch-indices-daily": {

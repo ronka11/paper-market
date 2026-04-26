@@ -1,69 +1,81 @@
 // src/components/PriceChart.jsx
-import {
-  ResponsiveContainer, AreaChart, Area,
-  XAxis, YAxis, Tooltip, CartesianGrid
-} from "recharts"
+import { useEffect, useRef } from "react"
+import { createChart, CandlestickSeries, AreaSeries } from "lightweight-charts"
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-}
+export default function PriceChart({ data = [], height = 200, mode = "area" }) {
+  const containerRef = useRef(null)
+  const chartRef = useRef(null)
 
-function formatPrice(val) {
-  if (val >= 1000) return val.toLocaleString("en-IN", { maximumFractionDigits: 0 })
-  return val.toFixed(2)
-}
+  useEffect(() => {
+    if (!data.length || !containerRef.current) return
 
-export default function PriceChart({ data = [], height = 200, color = "#2a2a2a" }) {
-  if (!data.length) return <p className="muted" style={{ padding: "40px 0", textAlign: "center" }}>no data</p>
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark"
 
-  const isUp = data[data.length - 1]?.close >= data[0]?.close
-  const lineColor = isUp ? "var(--green)" : "var(--red)"
-  const usedColor = color === "auto" ? lineColor : color
+    const chart = createChart(containerRef.current, {
+      height,
+      layout: {
+        background: { color: "transparent" },
+        textColor: isDark ? "#888878" : "#5a5a52",
+        fontFamily: "Courier New, monospace",
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: isDark ? "#2a2a26" : "#e0e0d8" },
+        horzLines: { color: isDark ? "#2a2a26" : "#e0e0d8" },
+      },
+      rightPriceScale: {
+        borderColor: isDark ? "#2a2a26" : "#ccccc4",
+        autoScale: true,
+      },
+      timeScale: {
+        borderColor: isDark ? "#2a2a26" : "#ccccc4",
+        timeVisible: true,
+      },
+      crosshair: { mode: 1 },
+    })
 
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 8 }}>
-        <defs>
-          <linearGradient id={`grad-${usedColor}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={usedColor} stopOpacity={0.15} />
-            <stop offset="95%" stopColor={usedColor} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-        <XAxis
-          dataKey="date"
-          tickFormatter={formatDate}
-          tick={{ fontSize: 11, fill: "var(--text-secondary)", fontFamily: "var(--font)" }}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          tickFormatter={formatPrice}
-          tick={{ fontSize: 11, fill: "var(--text-secondary)", fontFamily: "var(--font)" }}
-          tickLine={false}
-          axisLine={false}
-          width={60}
-        />
-        <Tooltip
-          contentStyle={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            fontFamily: "var(--font)",
-            fontSize: "12px",
-          }}
-          labelFormatter={formatDate}
-          formatter={(val) => [formatPrice(val), "close"]}
-        />
-        <Area
-          type="monotone"
-          dataKey="close"
-          stroke={usedColor}
-          strokeWidth={1.5}
-          fill={`url(#grad-${usedColor})`}
-          dot={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    const isUp = data[data.length - 1]?.close >= data[0]?.close
+
+    if (mode === "candle") {
+      const series = chart.addSeries(CandlestickSeries, {
+        upColor: "#4caf50",
+        downColor: "#e57373",
+        borderUpColor: "#4caf50",
+        borderDownColor: "#e57373",
+        wickUpColor: "#4caf50",
+        wickDownColor: "#e57373",
+      })
+      series.setData(data.map(d => ({
+        time: d.date.slice(0, 10),
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      })))
+    } else {
+      const color = isUp ? "#4caf50" : "#e57373"
+      const series = chart.addSeries(AreaSeries, {
+        lineColor: color,
+        topColor: color + "33",
+        bottomColor: color + "00",
+        lineWidth: 1.5,
+        priceScaleId: "right",
+      })
+      series.setData(data.map(d => ({
+        time: d.date.slice(0, 10),
+        value: d.close,
+      })))
+    }
+
+    chart.timeScale().fitContent()
+    chartRef.current = chart
+
+    return () => { chart.remove(); chartRef.current = null }
+  }, [data, height, mode])
+
+  if (!data.length) return (
+    <p className="muted" style={{ padding: "40px 0", textAlign: "center" }}>no data</p>
   )
+
+  return <div ref={containerRef} style={{ width: "100%" }} />
 }

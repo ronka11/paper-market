@@ -1,26 +1,25 @@
-/* src/index.css */
 :root {
-  --bg: #f5f5f0;
-  /* --bg: #f6f60f; */
-  --surface: #ececе6;
-  --border: #ccccc4;
-  --text-primary: #1a1a18;
-  --text-secondary: #5a5a52;
-  --accent: #2a2a2a;
-  --green: #2d6a2d;
-  --red: #8b2020;
+  --bg: #e8e8e2;
+  --surface: #deded8;
+  --border: #b8b8b0;
+  --text-primary: #0f0f0e;
+  --text-secondary: #4a4a44;
+  --accent: #0f0f0e;
+  --green: #1a5c1a;
+  --red: #6e1414;
   --font: "Courier New", Courier, monospace;
 }
 
 [data-theme="dark"] {
-  --bg: #141412;
-  --surface: #1e1e1a;
-  --border: #333330;
-  --text-primary: #e8e8e0;
-  --text-secondary: #888880;
+  --bg: #0a0a09;
+  --surface: #111110;
+  --border: #252522;
+  --text-primary: #d4d4c8;
+  --text-secondary: #606058;
   --accent: #d4d4c8;
-  --green: #4caf50;
-  --red: #e57373;
+  --green: #3a7d3a;
+  --red: #8b2a2a;
+  --font: "Courier New", Courier, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
