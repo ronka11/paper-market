@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react"
 import { createChart, CandlestickSeries, AreaSeries } from "lightweight-charts"
 
-export default function PriceChart({ data = [], height = 200, mode = "area" }) {
+export default function PriceChart({ data = [], height = 200, mode = "candle" }) {
   const containerRef = useRef(null)
   const chartRef = useRef(null)
 

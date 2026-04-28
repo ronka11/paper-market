@@ -12,7 +12,7 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 6. paper-market\frontend> npm run dev
 
 
-### todo
+### plan
 - [x] database setup
 - [x] market
 - [x] portfolio
@@ -24,9 +24,11 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 - [ ] rpi deployement
 
 
-### improvements
-- [ ] dynamic charts, adjusting y axis scale according to time window
-- [ ] candlestick charts along with existing charts
-- [ ] project intro popup - aim, learnings
-- [ ] compare two stocks
-- [ ] integrate tavily instead of reddit?
+### improvements / todo
+- [ ] fix dashboard
+- [x] dynamic charts, adjusting y axis scale according to time window
+- [x] candlestick charts along with existing charts
+- [x] project intro popup - aim, learnings
+- [x] compare two stocks
+- [x] integrate tavily instead of reddit?
+- [x] two seperate portfolios for US and IN stocks

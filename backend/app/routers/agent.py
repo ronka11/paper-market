@@ -61,3 +61,15 @@ async def get_indices(db: AsyncSession = Depends(get_db)):
     }
     log.info(f"get_indices: {indices_res}")
     return indices_res
+
+
+@router.get("/news")
+async def get_news():
+    from app.services.cache import get_cache
+    from app.tasks import refresh_market_news
+    cached = await get_cache("market:news")
+    if not cached:
+        # First visit — fetch synchronously
+        refresh_market_news.delay()
+        return {"items": [], "status": "fetching, check back shortly"}
+    return cached

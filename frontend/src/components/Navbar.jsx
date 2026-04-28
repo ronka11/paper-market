@@ -50,6 +50,7 @@ export default function Navbar() {
 
       <div style={{ marginLeft: "auto", display: "flex", gap: "16px", alignItems: "center" }}>
         <Link to="/" className="muted" style={{ textDecoration: "none", fontSize: "13px" }}>dashboard</Link>
+        <Link to="/compare" className="muted" style={{ textDecoration: "none", fontSize: "13px" }}>compare</Link>
         <button
           className="btn outline"
           onClick={() => setTheme(t => t === "light" ? "dark" : "light")}

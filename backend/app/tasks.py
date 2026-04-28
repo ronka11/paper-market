@@ -56,8 +56,7 @@ def fetch_prices_for_ticker(ticker: str, exchange: str = "US"):
     return run_async(_run())
 
 
-# Reddit scraping : under development
-
+# Reddit scraping 
 @celery.task(name="app.tasks.scrape_reddit_for_all_tickers")
 def scrape_reddit_for_all_tickers():
     async def _run():
@@ -103,4 +102,17 @@ def fetch_index_data():
             await fetch_and_store_history("^NSEI", "US", "1y", db)
             await fetch_and_store_history("^IXIC", "US", "1y", db)
         return {"status": "done"}
+    return run_async(_run())
+
+
+
+# Tavily news fetch
+@celery.task(name="app.tasks.refresh_market_news")
+def refresh_market_news():
+    async def _run():
+        from app.services.news import get_market_news
+        from app.services.cache import set_cache
+        news = await get_market_news()
+        await set_cache("market:news", {"items": news}, ttl_seconds=86400)
+        return {"count": len(news)}
     return run_async(_run())

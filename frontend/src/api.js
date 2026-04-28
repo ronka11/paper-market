@@ -35,8 +35,8 @@ export async function fetchIndices(sessionKey) {
 
 // ── Portfolio ─────────────────────────────────────────────────────
 
-export async function fetchPortfolio(sessionKey) {
-  const res = await client(sessionKey).get("/portfolio/")
+export async function fetchPortfolio(sessionKey, market = "US") {
+  const res = await client(sessionKey).get("/portfolio/", { params: { market } })
   return res.data
 }
 
@@ -45,8 +45,8 @@ export async function placeOrder(order, sessionKey) {
   return res.data
 }
 
-export async function fetchOrders(sessionKey) {
-  const res = await client(sessionKey).get("/portfolio/orders")
+export async function fetchOrders(sessionKey, market = "US") {
+  const res = await client(sessionKey).get("/portfolio/orders", { params: { market } })
   return res.data
 }
 
@@ -67,6 +67,29 @@ export async function triggerScrape(ticker, sessionKey) {
 export async function fetchAnalysis(ticker, exchange = "US", forceRefresh = false, sessionKey) {
   const res = await client(sessionKey).get(`/agent/analyse/${ticker}`, {
     params: { exchange, force_refresh: forceRefresh },
+  })
+  return res.data
+}
+
+
+// ── News ─────────────────────────────────────────────────────────
+
+export async function fetchMarketNews(sessionKey) {
+  const res = await client(sessionKey).get("/agent/news")
+  return res.data
+}
+
+
+// ── Compare ─────────────────────────────────────────────────────────
+
+export async function fetchComparisons(sessionKey) {
+  const res = await client(sessionKey).get("/compare/suggestions")
+  return res.data
+}
+
+export async function fetchCompare(tickerA, exchangeA, tickerB, exchangeB, period, sessionKey) {
+  const res = await client(sessionKey).get("/compare/", {
+    params: { ticker_a: tickerA, exchange_a: exchangeA, ticker_b: tickerB, exchange_b: exchangeB, period }
   })
   return res.data
 }

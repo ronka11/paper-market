@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { placeOrder } from "../api"
 
-export default function OrderForm({ ticker, exchange, sessionKey, onOrderPlaced }) {
+export default function OrderForm({ ticker, exchange, market = "US", sessionKey, onOrderPlaced }) {
   const [side, setSide] = useState("BUY")
   const [quantity, setQuantity] = useState(1)
   const [useLive, setUseLive] = useState(true)
@@ -17,8 +17,9 @@ export default function OrderForm({ ticker, exchange, sessionKey, onOrderPlaced 
 
     try {
       const order = {
-        ticker,
-        exchange,
+        ticker, 
+        exchange, 
+        market, 
         side,
         quantity: parseInt(quantity),
         use_live_price: useLive,

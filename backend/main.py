@@ -44,3 +44,10 @@ app.include_router(sentiment.router, prefix="/sentiment", tags=["sentiment"])
 from app.routers import market, portfolio, sentiment, agent
 
 app.include_router(agent.router, prefix="/agent", tags=["agent"])
+
+
+
+# COMPARE
+from app.routers import market, portfolio, sentiment, agent, compare
+
+app.include_router(compare.router, prefix="/compare", tags=["compare"])

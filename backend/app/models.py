@@ -37,6 +37,7 @@ class Portfolio(Base):
     starting_cash: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000"))
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+    market: Mapped[str] = mapped_column(String(2), default="US")
 
     positions: Mapped[list["Position"]] = relationship(back_populates="portfolio")
     orders: Mapped[list["Order"]] = relationship(back_populates="portfolio")

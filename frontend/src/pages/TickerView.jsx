@@ -13,6 +13,7 @@ export default function TickerView() {
   const { ticker }          = useParams()
   const [searchParams]      = useSearchParams()
   const exchange            = searchParams.get("exchange") || "US"
+  const market              = exchange === "NSE" || exchange === "BSE" ? "IN" : "US"
   const sessionKey          = useSession()
 
   const [history, setHistory]     = useState([])
@@ -41,7 +42,7 @@ export default function TickerView() {
       .catch(() => setAnalysis({ error: "could not load" }))
       .finally(() => setAnalysisLoading(false))
 
-    fetchOrders(sessionKey).then(all =>
+    fetchOrders(sessionKey, market).then(all =>
       setOrders(all.filter(o => o.ticker === ticker))
     )
   }, [ticker, exchange, sessionKey])
@@ -105,7 +106,7 @@ export default function TickerView() {
 
         {histLoading
           ? <p className="muted" style={{ padding: "60px 0", textAlign: "center" }}>loading chart...</p>
-          : <PriceChart data={history} height={280} color="candle" />
+          : <PriceChart data={history} height={280} mode="candle" />
         }
       </div>
 
@@ -119,6 +120,7 @@ export default function TickerView() {
         <OrderForm
           ticker={ticker}
           exchange={exchange}
+          market={market}          
           sessionKey={sessionKey}
           onOrderPlaced={reloadOrders}
         />

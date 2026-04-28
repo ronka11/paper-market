@@ -2,25 +2,34 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useSession } from "../hooks/useSession"
-import { fetchIndices, fetchPortfolio } from "../api"
+import { fetchIndices, fetchPortfolio, fetchMarketNews } from "../api"
 import PriceChart from "../components/PriceChart"
 
 export default function Dashboard() {
   const sessionKey = useSession()
-  const [indices, setIndices] = useState({ nifty50: [], nasdaq: [] })
-  const [portfolio, setPortfolio] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [indices, setIndices]   = useState({ nifty50: [], nasdaq: [] })
+  const [usPort, setUsPort]     = useState(null)
+  const [inPort, setInPort]     = useState(null)
+  const [news, setNews]         = useState([])
+  const [currency, setCurrency] = useState("USD")
+  const [loading, setLoading]   = useState(true)
+
+  const INR_RATE = 83.5  // fallback static rate, good enough for display
 
   useEffect(() => {
     if (!sessionKey) return
     async function load() {
       try {
-        const [idx, port] = await Promise.all([
+        const [idx, us, ind, n] = await Promise.all([
           fetchIndices(sessionKey),
-          fetchPortfolio(sessionKey),
+          fetchPortfolio(sessionKey, "US"),
+          fetchPortfolio(sessionKey, "IN"),
+          fetchMarketNews(sessionKey),
         ])
         setIndices(idx)
-        setPortfolio(port)
+        setUsPort(us)
+        setInPort(ind)
+        setNews(n.items || [])
       } catch (err) {
         console.error("dashboard load failed", err)
       } finally {
@@ -30,70 +39,90 @@ export default function Dashboard() {
     load()
   }, [sessionKey])
 
+  // Combined portfolio in chosen currency
+  function combined() {
+    if (!usPort || !inPort) return null
+    const toUSD  = v => v
+    const toINR  = v => v * INR_RATE
+    const fromIN = v => currency === "USD" ? v / INR_RATE : v
+    const fromUS = v => currency === "INR" ? toINR(v) : v
+
+    const cash     = fromUS(usPort.cash_balance) + fromIN(inPort.cash_balance)
+    const unreal   = fromUS(usPort.total_unrealised_pnl) + fromIN(inPort.total_unrealised_pnl)
+    const real     = fromUS(usPort.total_realised_pnl)   + fromIN(inPort.total_realised_pnl)
+    const sym      = currency === "USD" ? "$" : "₹"
+
+    return { cash, unreal, real, sym }
+  }
+
   if (loading) return <p className="muted" style={{ marginTop: "40px" }}>loading...</p>
 
-  const pnlTotal = portfolio
-    ? portfolio.total_unrealised_pnl + portfolio.total_realised_pnl
-    : 0
-  const pnlClass = pnlTotal >= 0 ? "up" : "down"
+  const combo = combined()
 
   return (
     <div>
+
+      {/* ── Currency toggle ── */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+        {["USD", "INR"].map(c => (
+          <button key={c} className={currency === c ? "btn" : "btn outline"}
+            onClick={() => setCurrency(c)}
+            style={{ padding: "4px 14px", fontSize: "12px" }}>
+            {c}
+          </button>
+        ))}
+        <span className="muted" style={{ fontSize: "11px", alignSelf: "center" }}>
+          combined view · 1 USD = {INR_RATE} INR
+        </span>
+      </div>
+
+      {/* ── Combined portfolio stats ── */}
+      {combo && (
+        <div className="card" style={{ marginBottom: "20px" }}>
+          <p style={{ fontSize: "11px", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: "14px" }}>
+            COMBINED PORTFOLIO
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+            <Stat label="total cash"    value={`${combo.sym}${combo.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+            <Stat label="unrealised"    value={`${combo.unreal >= 0 ? "+" : ""}${combo.sym}${combo.unreal.toFixed(2)}`} cls={combo.unreal >= 0 ? "up" : "down"} />
+            <Stat label="realised"      value={`${combo.real >= 0 ? "+" : ""}${combo.sym}${combo.real.toFixed(2)}`}     cls={combo.real >= 0 ? "up" : "down"} />
+            <Stat label="total p&l"     value={`${(combo.unreal + combo.real) >= 0 ? "+" : ""}${combo.sym}${(combo.unreal + combo.real).toFixed(2)}`} cls={(combo.unreal + combo.real) >= 0 ? "up" : "down"} />
+          </div>
+        </div>
+      )}
+
       {/* ── Indices ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
         <IndexPanel title="NIFTY 50" data={indices.nifty50} />
         <IndexPanel title="NASDAQ"   data={indices.nasdaq}  />
       </div>
 
-      {/* ── Portfolio snapshot ── */}
-      {portfolio && (
+      {/* ── Individual portfolios ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+        <PortfolioPanel title="US PORTFOLIO" portfolio={usPort} currency="$" />
+        <PortfolioPanel title="IN PORTFOLIO" portfolio={inPort} currency="₹" />
+      </div>
+
+      {/* ── News feed ── */}
+      {news.length > 0 && (
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "16px" }}>
-            <span style={{ fontWeight: "bold", fontSize: "13px" }}>PORTFOLIO</span>
-            <span className="muted" style={{ fontSize: "12px" }}>
-              starting ₹{portfolio.starting_cash.toLocaleString()}
-            </span>
+          <p style={{ fontSize: "11px", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: "14px" }}>
+            MARKET NEWS · updated daily
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {news.map((item, i) => (
+              <div key={i} style={{ borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+                <a href={item.url} target="_blank" rel="noreferrer"
+                  style={{ color: "var(--text-primary)", textDecoration: "none", fontSize: "13px", fontWeight: "bold" }}>
+                  {item.title}
+                </a>
+                <p className="muted" style={{ fontSize: "12px", marginTop: "4px" }}>{item.snippet}</p>
+              </div>
+            ))}
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "20px" }}>
-            <Stat label="cash"       value={`$${portfolio.cash_balance.toLocaleString()}`} />
-            <Stat label="unrealised" value={`${portfolio.total_unrealised_pnl >= 0 ? "+" : ""}${portfolio.total_unrealised_pnl.toFixed(2)}`} cls={portfolio.total_unrealised_pnl >= 0 ? "up" : "down"} />
-            <Stat label="realised"   value={`${portfolio.total_realised_pnl >= 0 ? "+" : ""}${portfolio.total_realised_pnl.toFixed(2)}`}   cls={portfolio.total_realised_pnl >= 0 ? "up" : "down"} />
-          </div>
-
-          {/* Positions table */}
-          {portfolio.positions.length === 0 ? (
-            <p className="muted" style={{ fontSize: "13px" }}>no open positions — search a ticker to start trading</p>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  {["ticker", "qty", "avg cost", "current", "unrealised"].map(h => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 0", fontWeight: "normal" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {portfolio.positions.map(pos => (
-                  <tr key={pos.ticker} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 0" }}>
-                      <Link to={`/ticker/${pos.ticker}`} style={{ color: "var(--text-primary)" }}>
-                        {pos.ticker}
-                      </Link>
-                    </td>
-                    <td>{pos.quantity}</td>
-                    <td>{pos.avg_cost.toFixed(2)}</td>
-                    <td>{pos.current_price.toFixed(2)}</td>
-                    <td className={pos.unrealised_pnl >= 0 ? "up" : "down"}>
-                      {pos.unrealised_pnl >= 0 ? "+" : ""}{pos.unrealised_pnl.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       )}
+
     </div>
   )
 }
@@ -105,23 +134,52 @@ function IndexPanel({ title, data }) {
       <p className="muted" style={{ fontSize: "12px" }}>no data — run fetch_index_data task first</p>
     </div>
   )
-
   const latest = data[data.length - 1]
   const first  = data[0]
   const change = ((latest.close - first.close) / first.close) * 100
 
   return (
     <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
         <span style={{ fontWeight: "bold", fontSize: "13px" }}>{title}</span>
         <span className={change >= 0 ? "up" : "down"} style={{ fontSize: "13px" }}>
           {change >= 0 ? "+" : ""}{change.toFixed(2)}%
         </span>
       </div>
-      <PriceChart data={data} height={160} color="area" />
-      <p className="muted" style={{ fontSize: "11px", marginTop: "8px", textAlign: "right" }}>
-        last close {latest.close.toLocaleString()} · updated daily
+      <PriceChart data={data} height={150} mode="area" />
+      <p className="muted" style={{ fontSize: "11px", marginTop: "6px", textAlign: "right" }}>
+        last close {latest.close.toLocaleString()} · daily
       </p>
+    </div>
+  )
+}
+
+function PortfolioPanel({ title, portfolio, currency }) {
+  if (!portfolio) return null
+  const positions = portfolio.positions || []
+
+  return (
+    <div className="card">
+      <p style={{ fontSize: "11px", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: "12px" }}>
+        {title}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+        <Stat label="cash"       value={`${currency}${portfolio.cash_balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+        <Stat label="unrealised" value={`${portfolio.total_unrealised_pnl >= 0 ? "+" : ""}${currency}${portfolio.total_unrealised_pnl.toFixed(2)}`}
+          cls={portfolio.total_unrealised_pnl >= 0 ? "up" : "down"} />
+      </div>
+      {positions.length === 0
+        ? <p className="muted" style={{ fontSize: "12px" }}>no positions</p>
+        : positions.map(pos => (
+          <div key={pos.ticker} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
+            <Link to={`/ticker/${pos.ticker}`} style={{ color: "var(--text-primary)" }}>{pos.ticker}</Link>
+            <span>{pos.quantity} shares</span>
+            <span className={pos.unrealised_pnl >= 0 ? "up" : "down"}>
+              {pos.unrealised_pnl >= 0 ? "+" : ""}{pos.unrealised_pnl.toFixed(2)}
+            </span>
+          </div>
+        ))
+      }
     </div>
   )
 }
@@ -129,8 +187,8 @@ function IndexPanel({ title, data }) {
 function Stat({ label, value, cls = "" }) {
   return (
     <div>
-      <p className="muted" style={{ fontSize: "11px", marginBottom: "4px" }}>{label}</p>
-      <p className={cls} style={{ fontSize: "16px" }}>{value}</p>
+      <p className="muted" style={{ fontSize: "11px", marginBottom: "3px" }}>{label}</p>
+      <p className={cls} style={{ fontSize: "15px" }}>{value}</p>
     </div>
   )
 }

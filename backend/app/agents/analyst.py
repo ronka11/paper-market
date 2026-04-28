@@ -88,6 +88,15 @@ async def get_portfolio_context(session_key: str) -> str:
     log.info(f"get_portfolio_context: {json.dumps(result)}")
     return json.dumps(result)
 
+@tool
+def get_ticker_news_tool(ticker: str) -> str:
+    """Fetch recent news for a ticker to inform analysis."""
+    import asyncio
+    from app.services.news import get_ticker_news
+    results = asyncio.get_event_loop().run_until_complete(get_ticker_news(ticker))
+    return json.dumps(results)
+
+
 
 
 class AgentState(TypedDict):
@@ -98,7 +107,7 @@ class AgentState(TypedDict):
 
 
 
-tools = [get_price_history, get_sentiment, get_portfolio_context]
+tools = [get_price_history, get_sentiment, get_portfolio_context, get_ticker_news_tool]
 llm_with_tools = llm.bind_tools(tools)
 tool_node = ToolNode(tools)
 
@@ -106,17 +115,18 @@ tool_node = ToolNode(tools)
 async def analyst_node(state: AgentState):
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    system = SystemMessage(content="""You are a financial analyst assistant for a paper trading app.
-You have access to price history, sentiment data, and portfolio context tools.
+    system = SystemMessage(content="""You are a professional financial analyst assistant for a paper trading app.
+You have access to price history, sentiment data, latest news and portfolio context tools.
 When analysing a stock:
 1. Always fetch price history first
-2. Fetch sentiment if available
-3. Fetch portfolio context to personalise advice
-4. Return a structured JSON analysis with these exact keys:
+2. Fetch recent news using get_ticker_news_tool
+3. Fetch sentiment if available
+4. Fetch portfolio context to personalise advice
+5. Return a structured JSON analysis with these exact keys:
    - ticker, exchange, latest_price, trend_7d_pct, trend_direction
    - sentiment_signal (bullish/bearish/neutral/unavailable)
    - stance (bull/bear/neutral)
-   - summary (3-4 sentences max, plain English)
+   - summary (3-4 sentences max, plain English, if something like sentiment/news is not available, dont mention it)
    - confidence (low/medium/high)
 Return ONLY the JSON object, no markdown, no extra text.""")
 

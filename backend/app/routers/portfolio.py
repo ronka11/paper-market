@@ -16,7 +16,7 @@ def get_session_key(x_session_key: str = Header(...)) -> str:
 class OrderRequest(BaseModel):
     ticker: str
     exchange: str = "US"
-    side: str     # BUY or SELL
+    side: str
     quantity: int
     use_live_price: bool = True
     limit_price: float | None = None
@@ -24,10 +24,11 @@ class OrderRequest(BaseModel):
 
 @router.get("/")
 async def get_portfolio(
+    market: str = "US",
     session_key: str = Depends(get_session_key),
-    db: AsyncSession = Depends(get_db)):
-
-    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db)
+    db: AsyncSession = Depends(get_db)
+):
+    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, market)
     positions = await portfolio_service.get_positions(portfolio.id, db)
 
     # Fetch live prices for all held tickers
@@ -61,7 +62,7 @@ async def place_order(
     if body.quantity <= 0:
         raise HTTPException(400, "quantity must be positive")
 
-    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db)
+    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, body.market)
 
     # Determine fill price
     if body.use_live_price:
@@ -91,10 +92,11 @@ async def place_order(
 
 @router.get("/orders")
 async def get_orders(
+    market: str = "US",
     session_key: str = Depends(get_session_key),
     db: AsyncSession = Depends(get_db)
 ):
-    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db)
+    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, market)
     orders = await portfolio_service.get_orders(portfolio.id, db)
     return [
         {

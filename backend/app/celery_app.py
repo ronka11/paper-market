@@ -28,7 +28,11 @@ celery.conf.update(
         # add to beat_schedule
         "fetch-indices-daily": {
             "task": "app.tasks.fetch_index_data",
-            "schedule": crontab(hour=1, minute=0),  # 1am UTC daily
+            "schedule": crontab(hour=1, minute=0),  # 1am UTC daily 
+        },
+        "refresh-news-daily": {
+            "task": "app.tasks.refresh_market_news",
+            "schedule": crontab(hour=6, minute=0),
         },
     },
 )

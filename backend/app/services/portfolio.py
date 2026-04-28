@@ -4,25 +4,29 @@ from sqlalchemy import select
 from app.models import Portfolio, Position, Order
 from app.config import log
 
-async def get_or_create_portfolio(
-        session_key: str,
-        db: AsyncSession) -> Portfolio:
-    '''
-    Creates/fetches portfolio
-    '''
+
+async def get_or_create_portfolio(session_key: str, db: AsyncSession, market: str = "US") -> Portfolio:
     result = await db.execute(
-        select(Portfolio).
-        where(Portfolio.session_key == session_key)
+        select(Portfolio).where(
+            Portfolio.session_key == session_key,
+            Portfolio.market == market
+        )
     )
     portfolio = result.scalar_one_or_none()
 
     if not portfolio:
-        portfolio = Portfolio(session_key=session_key)
+        currency = "INR" if market == "IN" else "USD"
+        portfolio = Portfolio(
+            session_key=session_key,
+            market=market,
+            currency=currency,
+            cash_balance=1000000 if market == "IN" else 100000,
+            starting_cash=1000000 if market == "IN" else 100000,
+        )
         db.add(portfolio)
         await db.commit()
         await db.refresh(portfolio)
 
-    log.info("portfolio created/fetched")
     return portfolio
 
 
