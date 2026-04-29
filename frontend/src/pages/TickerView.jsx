@@ -23,15 +23,26 @@ export default function TickerView() {
   const [histLoading, setHistLoading]   = useState(true)
   const [analysisLoading, setAnalysisLoading] = useState(true)
 
-  // Load price history
+  // Load full 1 year of price history once, period selector just filters
   useEffect(() => {
     if (!sessionKey) return
     setHistLoading(true)
-    fetchHistory(ticker, exchange, period, sessionKey)
+    // Always fetch 1y data for full history, will be filtered by period
+    fetchHistory(ticker, exchange, "1y", sessionKey)
       .then(setHistory)
       .catch(console.error)
       .finally(() => setHistLoading(false))
-  }, [ticker, exchange, period, sessionKey])
+  }, [ticker, exchange, sessionKey])
+
+  // Apply period filter to already-loaded history
+  const filteredHistory = period === "1y" ? history : (() => {
+    if (!history.length) return []
+    const periodDays = { "1mo": 30, "3mo": 90, "6mo": 180 }
+    const days = periodDays[period] || 90
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+    return history.filter(h => new Date(h.date) >= cutoffDate)
+  })()
 
   // Load analysis + orders
   useEffect(() => {
@@ -106,7 +117,7 @@ export default function TickerView() {
 
         {histLoading
           ? <p className="muted" style={{ padding: "60px 0", textAlign: "center" }}>loading chart...</p>
-          : <PriceChart data={history} height={280} mode="candle" />
+          : <PriceChart data={filteredHistory} height={280} mode="candle" />
         }
       </div>
 

@@ -42,6 +42,9 @@ async def get_history(
         records = await market_service.get_stored_history(ticker, exchange, db)
         if not records:
             records = await market_service.fetch_and_store_history(ticker, exchange, period, db)
+    
+    # Filter records by the requested period
+    records = market_service.filter_by_period(records, period)
 
     return [
         {

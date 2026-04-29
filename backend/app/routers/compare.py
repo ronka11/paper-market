@@ -63,21 +63,39 @@ async def compare(
 
     # LLM comparison
     prompt = f"""Compare {ticker_a} and {ticker_b} as investments based on:
-        Recent news for {ticker_a}: {news_a}
-        Recent news for {ticker_b}: {news_b} and their fundamentals as a company and its history.
-        Return JSON with keys: summary (3-4 sentences), winner (ticker string or "neutral"), reasoning (one sentence each for both tickers), 
-            confidence (low/medium/high).
-        If there are no clear winners mention that and its reasoning.
-        Return ONLY JSON."""
+Recent news for {ticker_a}: {news_a}
+Recent news for {ticker_b}: {news_b}
+
+Analyze their fundamentals, history, and investment potential.
+
+Return ONLY valid JSON with NO markdown or extra text, in this exact format:
+{{
+  "summary": "3-4 sentence comparison",
+  "winner": "{ticker_a}" or "{ticker_b}" or "neutral",
+  "reasoning_a": "one sentence for {ticker_a}",
+  "reasoning_b": "one sentence for {ticker_b}",
+  "confidence": "low" or "medium" or "high"
+}}
+
+Output ONLY JSON. No markdown. No extra text."""
 
     from langchain_core.messages import HumanMessage
     response = await llm.ainvoke([HumanMessage(content=prompt)])
 
     import json
+    import re
     try:
         analysis = json.loads(response.content)
     except Exception:
-        analysis = {"raw": response.content}
+        # Try to extract JSON from response
+        json_match = re.search(r'\{[\s\S]*\}', response.content)
+        if json_match:
+            try:
+                analysis = json.loads(json_match.group())
+            except Exception:
+                analysis = {"raw": response.content, "error": "parse_failed"}
+        else:
+            analysis = {"raw": response.content, "error": "parse_failed"}
 
     result = {
         "ticker_a": ticker_a,

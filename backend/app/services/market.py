@@ -1,21 +1,63 @@
 import yfinance as yf
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.models import StockPrice
 from app.config import log
+
+def filter_by_period(records: list, period: str) -> list:
+    """Filter records to match the period. Period examples: '1mo', '3mo', '6mo', '1y'"""
+    if not records:
+        return records
+    
+    period_days = {
+        "1mo": 30,
+        "3mo": 90,
+        "6mo": 180,
+        "1y": 365,
+        "2y": 730,
+    }
+    
+    days = period_days.get(period, 90)  # Default to 3 months
+    cutoff_date = datetime.now() - timedelta(days=days)
+    
+    return [r for r in records if r.date >= cutoff_date]
+
 
 def format_ticker(ticker: str, exchange: str = "US") -> str:
     """
     US tickers stay as-is (AAPL, TSLA)
     Indian NSE: RELIANCE -> RELIANCE.NS
     Indian BSE: RELIANCE -> RELIANCE.BO
+    Handles index aliases too.
     """
     ticker = ticker.upper().strip()
+
+    # Global index aliases
+    INDEX_MAP = {
+        "NIFTY50": "^NSEI",
+        "NIFTY": "^NSEI",
+        "^NSEI": "^NSEI",
+
+        "NASDAQ": "^IXIC",
+        "NASDAQ100": "^NDX",
+        "^IXIC": "^IXIC",
+
+        "S&P500": "^GSPC",
+        "SP500": "^GSPC",
+        "^GSPC": "^GSPC",
+
+        "DOW": "^DJI",
+        "^DJI": "^DJI",
+    }
+
+    if ticker in INDEX_MAP:
+        return INDEX_MAP[ticker]
     if exchange == "NSE":
         return f"{ticker}.NS"
     elif exchange == "BSE":
         return f"{ticker}.BO"
+
     return ticker
 
 
@@ -29,6 +71,7 @@ async def fetch_and_store_history (
     period examples: "1mo", "3mo", "6mo", "1y"
     """
     formatted = format_ticker(ticker, exchange)
+    log.info(f"Downloading ticker={formatted}")
 
     data = yf.download(formatted, period=period, progress=False, auto_adjust=True)
 

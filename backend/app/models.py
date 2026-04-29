@@ -30,9 +30,10 @@ class StockPrice(Base):
 
 class Portfolio(Base):
     __tablename__ = "portfolios"
+    __table_args__ = (UniqueConstraint("session_key", "market", name="uq_session_market"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    session_key: Mapped[str] = mapped_column(String(36), unique=True, index=True)
+    session_key: Mapped[str] = mapped_column(String(36), unique=True)
     cash_balance: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000"))
     starting_cash: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000"))
     currency: Mapped[str] = mapped_column(String(3), default="USD")

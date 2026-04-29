@@ -1,11 +1,17 @@
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from app.models import Portfolio, Position, Order
 from app.config import log
 
 
-async def get_or_create_portfolio(session_key: str, db: AsyncSession, market: str = "US") -> Portfolio:
+async def get_or_create_portfolio(
+    session_key: str,
+    db: AsyncSession,
+    market: str = "US"
+) -> Portfolio:
+
     result = await db.execute(
         select(Portfolio).where(
             Portfolio.session_key == session_key,
@@ -14,18 +20,36 @@ async def get_or_create_portfolio(session_key: str, db: AsyncSession, market: st
     )
     portfolio = result.scalar_one_or_none()
 
-    if not portfolio:
-        currency = "INR" if market == "IN" else "USD"
-        portfolio = Portfolio(
-            session_key=session_key,
-            market=market,
-            currency=currency,
-            cash_balance=1000000 if market == "IN" else 100000,
-            starting_cash=1000000 if market == "IN" else 100000,
-        )
-        db.add(portfolio)
+    if portfolio:
+        return portfolio
+
+    currency = "INR" if market == "IN" else "USD"
+
+    portfolio = Portfolio(
+        session_key=session_key,
+        market=market,
+        currency=currency,
+        cash_balance=1000000 if market == "IN" else 100000,
+        starting_cash=1000000 if market == "IN" else 100000,
+    )
+
+    db.add(portfolio)
+
+    try:
         await db.commit()
         await db.refresh(portfolio)
+
+    except IntegrityError:
+        # Another request created it first
+        await db.rollback()
+
+        result = await db.execute(
+            select(Portfolio).where(
+                Portfolio.session_key == session_key,
+                Portfolio.market == market
+            )
+        )
+        portfolio = result.scalar_one()
 
     return portfolio
 
@@ -117,19 +141,19 @@ async def _get_position(
 
 
 async def _upsert_position_buy(
-        portfolio_id: str, 
-        ticker: str, 
+        portfolio_id: str,
+        ticker: str,
         quantity: int,
         fill_price: Decimal,
         db: AsyncSession):
     position = await _get_position(portfolio_id, ticker, db)
 
     if position:
-        # weighted average cost
         total_qty = position.quantity + quantity
         position.avg_cost = (
             (position.avg_cost * position.quantity) + (fill_price * quantity)
         ) / total_qty
+        position.quantity = total_qty
     else:
         position = Position(
             portfolio_id=portfolio_id,
@@ -141,17 +165,17 @@ async def _upsert_position_buy(
 
 
 async def _upsert_position_sell(
-        portfolio_id: str,
-        position: Position, 
-        # ticker: str, 
+        position: Position,
         quantity: int,
         fill_price: Decimal,
         db: AsyncSession):
+
     realised = (fill_price - position.avg_cost) * quantity
+
     position.realised_pnl += realised
     position.quantity -= quantity
 
-    # clean up zero positions
+    # Remove empty positions
     if position.quantity == 0:
         await db.delete(position)
 

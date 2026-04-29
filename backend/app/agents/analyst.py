@@ -89,12 +89,37 @@ async def get_portfolio_context(session_key: str) -> str:
     return json.dumps(result)
 
 @tool
-def get_ticker_news_tool(ticker: str) -> str:
+async def get_ticker_news_tool(ticker: str, exchange: str = "US") -> str:
     """Fetch recent news for a ticker to inform analysis."""
-    import asyncio
     from app.services.news import get_ticker_news
-    results = asyncio.get_event_loop().run_until_complete(get_ticker_news(ticker))
-    return json.dumps(results)
+
+    normalized_ticker = ticker.upper().strip()
+
+    if exchange.upper() == "NSE" and not normalized_ticker.endswith(".NS"):
+        normalized_ticker = f"{normalized_ticker}.NS"
+    elif exchange.upper() == "BSE" and not normalized_ticker.endswith(".BO"):
+        normalized_ticker = f"{normalized_ticker}.BO"
+
+    try:
+        results = await get_ticker_news(normalized_ticker)
+
+        if not results:
+            return json.dumps({
+                "ticker": normalized_ticker,
+                "articles": [],
+                "summary": "No recent news found"
+            })
+
+        return json.dumps(results)
+
+    except Exception as e:
+        log.exception(f"get_ticker_news_tool failed for {normalized_ticker}: {e}")
+
+        return json.dumps({
+            "ticker": normalized_ticker,
+            "error": str(e),
+            "articles": []
+        })
 
 
 
@@ -117,21 +142,30 @@ async def analyst_node(state: AgentState):
 
     system = SystemMessage(content="""You are a professional financial analyst assistant for a paper trading app.
 You have access to price history, sentiment data, latest news and portfolio context tools.
-When analysing a stock:
-1. Always fetch price history first
-2. Fetch recent news using get_ticker_news_tool
-3. Fetch sentiment if available
-4. Fetch portfolio context to personalise advice
-5. Return a structured JSON analysis with these exact keys:
-   - ticker, exchange, latest_price, trend_7d_pct, trend_direction
-   - sentiment_signal (bullish/bearish/neutral/unavailable)
-   - stance (bull/bear/neutral)
-   - summary (3-4 sentences max, plain English, if something like sentiment/news is not available, dont mention it)
-   - confidence (low/medium/high)
-Return ONLY the JSON object, no markdown, no extra text.""")
+
+ANALYSIS INSTRUCTIONS:
+1. Always fetch price history first using get_price_history
+2. Fetch recent news using get_ticker_news_tool  
+3. Fetch sentiment if available using get_sentiment
+4. Fetch portfolio context using get_portfolio_context
+5. After gathering all data, return ONLY a valid JSON object with NO additional text or markdown.
+
+JSON RESPONSE FORMAT (must be valid JSON, no markdown, no extra text):
+{
+  "ticker": "string",
+  "exchange": "string", 
+  "latest_price": number,
+  "trend_7d_pct": number,
+  "trend_direction": "up" or "down",
+  "sentiment_signal": "bullish" or "bearish" or "neutral" or "unavailable",
+  "stance": "bull" or "bear" or "neutral",
+  "summary": "string (3-4 sentences, plain English)",
+  "confidence": "low" or "medium" or "high"
+}
+
+CRITICAL: After gathering all required data, output ONLY the JSON object. Do NOT make additional tool calls. Do NOT include any markdown formatting. Output valid JSON only.""")
 
     messages = [system] + state["messages"]
-    # response = llm_with_tools.invoke(messages)
     response = await llm_with_tools.ainvoke(messages)
     log.info(f"analyst node: {response}")
     return {"messages": [response]}
@@ -159,15 +193,26 @@ async def run_analysis(ticker: str, exchange: str, session_key: str) -> dict:
     from langchain_core.messages import HumanMessage
 
     result = await analyst_graph.ainvoke({
-        "messages": [HumanMessage(content=f"Analyse {ticker} on {exchange} exchange for session {session_key}")],
+        "messages": [HumanMessage(content=f"Analyse {ticker} on {exchange} exchange for session {session_key}. After fetching all data, return ONLY valid JSON with no extra text.")],
         "ticker": ticker,
         "exchange": exchange,
         "session_key": session_key,
     })
 
-    last_message = result["messages"][-1].content
-    try:
-        return json.loads(last_message)
-    except json.JSONDecodeError:    
-        # LLM didn't return clean JSON, return as-is
-        return {"raw": last_message, "error": "parse_failed"}
+    last_message = result["messages"][-1]
+    
+    if hasattr(last_message, "content") and last_message.content:
+        content = last_message.content.strip()
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            return {"raw": content, "error": "parse_failed"}
+    
+    return {"error": "no_content_from_agent", "raw": str(last_message)}

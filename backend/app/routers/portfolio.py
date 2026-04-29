@@ -16,6 +16,7 @@ def get_session_key(x_session_key: str = Header(...)) -> str:
 class OrderRequest(BaseModel):
     ticker: str
     exchange: str = "US"
+    market: str = "US"  # "US" or "IN"
     side: str
     quantity: int
     use_live_price: bool = True
@@ -42,11 +43,24 @@ async def get_portfolio(
 
     pnl = portfolio_service.calculate_pnl(positions, current_prices)
 
+    # Serialize positions with current PnL
+    positions_data = []
+    for pos in positions:
+        pos_pnl = pnl.get("positions_detail", {}).get(pos.ticker, {})
+        positions_data.append({
+            "ticker": pos.ticker,
+            "quantity": pos.quantity,
+            "avg_cost": float(pos.avg_cost),
+            "current_price": current_prices.get(pos.ticker, 0),
+            "unrealised_pnl": pos_pnl.get("unrealised_pnl", 0),
+        })
+
     return {
         "portfolio_id": portfolio.id,
         "cash_balance": float(portfolio.cash_balance),
         "starting_cash": float(portfolio.starting_cash),
         "currency": portfolio.currency,
+        "positions": positions_data,
         **pnl
     }
 
