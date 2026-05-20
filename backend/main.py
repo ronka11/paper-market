@@ -51,3 +51,15 @@ app.include_router(agent.router, prefix="/agent", tags=["agent"])
 from app.routers import market, portfolio, sentiment, agent, compare
 
 app.include_router(compare.router, prefix="/compare", tags=["compare"])
+
+
+# SCREENER
+from app.routers import market, portfolio, sentiment, agent, compare, screener
+
+app.include_router(screener.router, prefix="/screener", tags=["screener"])
+
+
+# WEB SOCKET
+from app.routers import market, portfolio, sentiment, agent, compare, screener, ws
+
+app.include_router(ws.router, prefix="/ws", tags=["websocket"])

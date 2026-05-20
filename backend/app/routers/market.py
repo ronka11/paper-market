@@ -10,17 +10,48 @@ VALID_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y"}
 VALID_EXCHANGES = {"US", "NSE", "BSE"}
 
 
+# replace /quote endpoint:
 @router.get("/quote")
-async def get_quote(
-    ticker: str,
-    exchange: str = Query(default="US")
-):
+async def get_quote(ticker: str, exchange: str = Query(default="US")):
     if exchange not in VALID_EXCHANGES:
-        raise HTTPException(400, f"exchange must be on of {VALID_EXCHANGES}")
+        raise HTTPException(400, f"exchange must be one of {VALID_EXCHANGES}")
     try:
-        return market_service.get_live_quote(ticker, exchange)
+        return market_service.get_fast_quote(ticker, exchange)
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+# add these new endpoints at the bottom:
+@router.get("/news")
+async def get_ticker_news(
+    ticker: str,
+    exchange: str = Query(default="US"),
+):
+    return market_service.get_ticker_news(ticker, exchange)
+
+
+@router.get("/price-targets")
+async def get_price_targets(
+    ticker: str,
+    exchange: str = Query(default="US"),
+):
+    return market_service.get_analyst_price_targets(ticker, exchange)
+
+
+@router.get("/upgrades-downgrades")
+async def get_upgrades_downgrades(
+    ticker: str,
+    exchange: str = Query(default="US"),
+):
+    return market_service.get_upgrades_downgrades(ticker, exchange)
+
+
+@router.get("/recommendations")
+async def get_recommendations(
+    ticker: str,
+    exchange: str = Query(default="US"),
+):
+    return market_service.get_recommendations_summary(ticker, exchange)
     
 
 @router.get("/history")

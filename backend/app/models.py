@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     String, Numeric, Integer, DateTime, ForeignKey,
-    UniqueConstraint, Enum, Text, Float
+    UniqueConstraint, Enum, Text, Float, BigInteger
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -25,7 +25,7 @@ class StockPrice(Base):
     high: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     low: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     close: Mapped[Decimal] = mapped_column(Numeric(18, 6))
-    volume: Mapped[int] = mapped_column(Integer)
+    volume: Mapped[int] = mapped_column(BigInteger)
 
 
 class Portfolio(Base):

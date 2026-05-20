@@ -1,8 +1,8 @@
-// src/pages/Dashboard.jsx
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useSession } from "../hooks/useSession"
 import { fetchIndices, fetchPortfolio, fetchMarketNews } from "../api"
+import { fetchScreener } from "../api"
 import PriceChart from "../components/PriceChart"
 
 export default function Dashboard() {
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [news, setNews]         = useState([])
   const [currency, setCurrency] = useState("USD")
   const [loading, setLoading]   = useState(true)
+  const [movers, setMovers] = useState([])
 
   const INR_RATE = 83.5  // fallback static rate, good enough for display
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
           fetchPortfolio(sessionKey, "US"),
           fetchPortfolio(sessionKey, "IN"),
           fetchMarketNews(sessionKey),
+          fetchScreener("day_gainers").then(setMovers).catch(() => [])
         ])
         setIndices(idx)
         setUsPort(us)
@@ -102,6 +104,31 @@ export default function Dashboard() {
         <PortfolioPanel title="US PORTFOLIO" portfolio={usPort} currency="$" />
         <PortfolioPanel title="IN PORTFOLIO" portfolio={inPort} currency="₹" />
       </div>
+      
+
+      {movers.length > 0 && (
+        <div className="card" style={{ marginBottom: "20px" }}>
+          <p style={{ fontSize: "11px", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: "14px" }}>
+            US DAY GAINERS
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px" }}>
+            {movers.slice(0, 5).map(m => (
+              <Link key={m.ticker} to={`/ticker/${m.ticker}`}
+                style={{ textDecoration: "none", color: "var(--text-primary)" }}>
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
+                  <p style={{ fontSize: "12px", fontWeight: "bold" }}>{m.ticker}</p>
+                  <p className="muted" style={{ fontSize: "11px", marginBottom: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {m.name}
+                  </p>
+                  <p className="up" style={{ fontSize: "12px" }}>
+                    +{m.change_pct?.toFixed(2)}%
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── News feed ── */}
       {news.length > 0 && (

@@ -51,22 +51,6 @@ async def get_price_history(ticker: str, exchange: str = "US") -> str:
 
 
 @tool
-async def get_sentiment(ticker: str) -> str:
-    """Get Reddit sentiment summary for a ticker."""
-    import asyncio
-    from app.database import AsyncSessionLocal
-    from app.services.sentiment import get_sentiment_summary
-
-    async with AsyncSessionLocal() as db:
-        result = await get_sentiment_summary(ticker, db)
-
-    # result = asyncio.get_event_loop().run_until_complete(_run())
-    # result = asyncio.run(_run())
-    log.info(f"get_sentiment: {json.dumps(result)}")
-    return json.dumps(result)
-
-
-@tool
 async def get_portfolio_context(session_key: str) -> str:
     """Get current portfolio positions for context."""
     import asyncio
@@ -132,7 +116,7 @@ class AgentState(TypedDict):
 
 
 
-tools = [get_price_history, get_sentiment, get_portfolio_context, get_ticker_news_tool]
+tools = [get_price_history, get_portfolio_context, get_ticker_news_tool]
 llm_with_tools = llm.bind_tools(tools)
 tool_node = ToolNode(tools)
 
@@ -141,14 +125,13 @@ async def analyst_node(state: AgentState):
     from langchain_core.messages import HumanMessage, SystemMessage
 
     system = SystemMessage(content="""You are a professional financial analyst assistant for a paper trading app.
-You have access to price history, sentiment data, latest news and portfolio context tools.
+You have access to price history, latest news and portfolio context tools.
 
 ANALYSIS INSTRUCTIONS:
 1. Always fetch price history first using get_price_history
-2. Fetch recent news using get_ticker_news_tool  
-3. Fetch sentiment if available using get_sentiment
-4. Fetch portfolio context using get_portfolio_context
-5. After gathering all data, return ONLY a valid JSON object with NO additional text or markdown.
+2. Fetch recent news using get_ticker_news_tool and use it to inform sentiment signal
+3. Fetch portfolio context using get_portfolio_context
+4. After gathering all data, return ONLY a valid JSON object with NO additional text or markdown.
 
 JSON RESPONSE FORMAT (must be valid JSON, no markdown, no extra text):
 {
@@ -157,7 +140,7 @@ JSON RESPONSE FORMAT (must be valid JSON, no markdown, no extra text):
   "latest_price": number,
   "trend_7d_pct": number,
   "trend_direction": "up" or "down",
-  "sentiment_signal": "bullish" or "bearish" or "neutral" or "unavailable",
+  "sentiment_signal": "bullish" or "bearish" or "neutral" or "unavailable" (derived from recent news tone),
   "stance": "bull" or "bear" or "neutral",
   "summary": "string (3-4 sentences, plain English)",
   "confidence": "low" or "medium" or "high"

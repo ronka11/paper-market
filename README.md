@@ -25,8 +25,11 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 
 
 ### improvements / todo
-- [ ] ticker chart view for 6mo, 1y 
-- [ ] fix NASDAQ chart viewing
+- [ ] buy/sell live prices
+- [ ] indian stocks redirection from dashboard
+- [x] yfinance yfinance yfinance
+- [X] ticker chart view for 6mo, 1y 
+- [X] fix NASDAQ chart viewing
 - [x] fix dashboard
 - [x] improve prompting - strict json
 - [x] dynamic charts, adjusting y axis scale according to time window

@@ -62,9 +62,9 @@ def format_ticker(ticker: str, exchange: str = "US") -> str:
 
 
 async def fetch_and_store_history (
-        ticker: str, 
-        exchange: str, 
-        period: str, 
+        ticker: str,
+        exchange: str,
+        period: str,
         db: AsyncSession) -> list[StockPrice]:
     """
     Pull OHLCV from yfinance, upsert into stock_prices, return records.
@@ -142,23 +142,93 @@ async def get_stored_history (ticker: str, exchange: str, db: AsyncSession) -> l
     log.info(f"get_stored_history: {result}")
     return result.scalars().all()
 
-
-def get_live_quote (ticker: str, exchange: str) -> dict:
-    """
-    Get current price info — not stored, just returned live.
-    """
+# replace get_live_quote entirely with:
+def get_fast_quote(ticker: str, exchange: str) -> dict:
+    """Uses fast_info — much lower latency than full info."""
     formatted = format_ticker(ticker, exchange)
     t = yf.Ticker(formatted)
-    info = t.info
+    fi = t.fast_info
 
-    live_quote_res = {
+    return {
         "ticker": formatted,
-        "name": info.get("longName", formatted),
-        "price": info.get("currentPrice") or info.get("regularMarketPrice"),
-        "change_pct": info.get("52WeekChange"),
-        "market_cap": info.get("marketCap"),
-        "pe_ratio": info.get("trailingPE"),
-        "volume": info.get("volume"),
-        "currency": info.get("currency", "USD"),
+        "price": fi.last_price,
+        "prev_close": fi.previous_close,
+        "open": fi.open,
+        "day_high": fi.day_high,
+        "day_low": fi.day_low,
+        "volume": fi.last_volume,
+        "market_cap": fi.market_cap,
+        "52w_high": fi.fifty_two_week_high,
+        "52w_low": fi.fifty_two_week_low,
+        "currency": fi.currency,
+        "exchange": fi.exchange,
     }
-    return live_quote_res
+
+
+def get_ticker_news(ticker: str, exchange: str, count: int = 6) -> list[dict]:
+    formatted = format_ticker(ticker, exchange)
+    t = yf.Ticker(formatted)
+    try:
+        items = t.get_news(count=count)
+        return [
+            {
+                "title": n.get("title"),
+                "publisher": n.get("publisher"),
+                "url": n.get("link"),
+                "published_at": n.get("providerPublishTime"),
+            }
+            for n in items if n.get("title")
+        ]
+    except Exception:
+        return []
+
+
+def get_analyst_price_targets(ticker: str, exchange: str) -> dict:
+    formatted = format_ticker(ticker, exchange)
+    t = yf.Ticker(formatted)
+    try:
+        pt = t.get_analyst_price_targets()
+        return {k: round(v, 2) for k, v in pt.items() if v is not None}
+    except Exception:
+        return {}
+
+
+def get_upgrades_downgrades(ticker: str, exchange: str, limit: int = 8) -> list[dict]:
+    formatted = format_ticker(ticker, exchange)
+    t = yf.Ticker(formatted)
+    try:
+        df = t.get_upgrades_downgrades()
+        if df is None or df.empty:
+            return []
+        df = df.head(limit).reset_index()
+        return [
+            {
+                "date": str(row["GradeDate"])[:10],
+                "firm": row["Firm"],
+                "from_grade": row["FromGrade"],
+                "to_grade": row["ToGrade"],
+                "action": row["Action"],
+            }
+            for _, row in df.iterrows()
+        ]
+    except Exception:
+        return []
+
+
+def get_recommendations_summary(ticker: str, exchange: str) -> dict:
+    formatted = format_ticker(ticker, exchange)
+    t = yf.Ticker(formatted)
+    try:
+        df = t.get_recommendations_summary()
+        if df is None or df.empty:
+            return {}
+        row = df.iloc[0]
+        return {
+            "strong_buy":  int(row.get("strongBuy", 0)),
+            "buy":         int(row.get("buy", 0)),
+            "hold":        int(row.get("hold", 0)),
+            "sell":        int(row.get("sell", 0)),
+            "strong_sell": int(row.get("strongSell", 0)),
+        }
+    except Exception:
+        return {}

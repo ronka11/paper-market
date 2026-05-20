@@ -36,7 +36,10 @@ async def get_portfolio(
     current_prices = {}
     for pos in positions:
         try:
-            quote = market_service.get_live_quote(pos.ticker, "US")
+            # Infer exchange from ticker suffix
+            exchange = "NSE" if pos.ticker.endswith(".NS") else \
+                      "BSE" if pos.ticker.endswith(".BO") else "US"
+            quote = market_service.get_fast_quote(pos.ticker, exchange)
             current_prices[pos.ticker] = quote["price"] or 0
         except Exception:
             current_prices[pos.ticker] = 0
@@ -78,10 +81,13 @@ async def place_order(
 
     portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, body.market)
 
+    # Format ticker with exchange suffix (e.g., RELIANCE -> RELIANCE.NS for NSE)
+    formatted_ticker = market_service.format_ticker(body.ticker, body.exchange)
+
     # Determine fill price
     if body.use_live_price:
         try:
-            quote = market_service.get_live_quote(body.ticker, body.exchange)
+            quote = market_service.get_price_quote(body.ticker, body.exchange)
             fill_price = quote["price"]
         except Exception:
             raise HTTPException(500, "Could not fetch live price")
@@ -91,7 +97,7 @@ async def place_order(
         fill_price = body.limit_price
 
     order = await portfolio_service.place_order(
-        portfolio, body.ticker, body.side, body.quantity, fill_price, db
+        portfolio, formatted_ticker, body.side, body.quantity, fill_price, db
     )
 
     return {
@@ -108,7 +114,7 @@ async def place_order(
 async def get_orders(
     market: str = "US",
     session_key: str = Depends(get_session_key),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db)  
 ):
     portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, market)
     orders = await portfolio_service.get_orders(portfolio.id, db)
