@@ -19,8 +19,9 @@ Thumbs.db
 # Celery beat
 celerybeat-schedule*
 
-# Learnings
+# Learnings and testings
 learnings.md
+testing.ipynb
 
 # Plan
 plan.md
