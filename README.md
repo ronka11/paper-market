@@ -3,6 +3,11 @@ paper market simulator
 An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE/BSE or US), it pulls real market data + Reddit sentiment, runs algorithmic strategies (pending), lets you simulate trades with virtual cash, and an LLM agent helps you reason about positions
 
 
+![paper1](images/paper1.png)
+![paper2](images/paper2.png)
+![paper3](images/paper3.png)
+
+
 ## startup
 1. paper-market> .\venv-paper-market\Scripts\activate
 2. paper-market> docker run -d -p 6379:6379 redis
