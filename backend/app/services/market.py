@@ -158,8 +158,6 @@ def get_fast_quote(ticker: str, exchange: str) -> dict:
         "day_low": fi.day_low,
         "volume": fi.last_volume,
         "market_cap": fi.market_cap,
-        "52w_high": fi.fifty_two_week_high,
-        "52w_low": fi.fifty_two_week_low,
         "currency": fi.currency,
         "exchange": fi.exchange,
     }

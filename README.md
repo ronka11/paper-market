@@ -4,7 +4,7 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 
 
 ## startup
-1. paper-market> activate venv
+1. paper-market> .\venv-paper-market\Scripts\activate
 2. paper-market> docker run -d -p 6379:6379 redis
 3. paper-market\backend> uvicorn main:app --reload
 4. paper-market\backend> celery -A app.celery_app.celery worker --pool=solo --loglevel=info
@@ -20,13 +20,14 @@ An AI-powered paper trading simulator. Feed it a stock/crypto ticker (Indian NSE
 - [x] langchain agents
 - [x] loggings 
 - [x] react frontend
-- [ ] backtesting methods
+- [ ] backtesting methods (later)
 - [ ] rpi deployement
 
 
 ### improvements / todo
-- [ ] buy/sell live prices
-- [ ] indian stocks redirection from dashboard
+- [ ] major UI improvement
+- [x] buy/sell live prices
+- [x] indian stocks redirection from dashboard
 - [x] yfinance yfinance yfinance
 - [X] ticker chart view for 6mo, 1y 
 - [X] fix NASDAQ chart viewing

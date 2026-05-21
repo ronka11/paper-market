@@ -49,7 +49,7 @@ async def get_portfolio(
     # Serialize positions with current PnL
     positions_data = []
     for pos in positions:
-        pos_pnl = pnl.get("positions_detail", {}).get(pos.ticker, {})
+        pos_pnl = next((p for p in pnl.get("positions", []) if p["ticker"] == pos.ticker), {})
         positions_data.append({
             "ticker": pos.ticker,
             "quantity": pos.quantity,
@@ -74,40 +74,52 @@ async def place_order(
     session_key: str = Depends(get_session_key),
     db: AsyncSession = Depends(get_db)
 ):
+    from app.config import log
+
     if body.side not in ("BUY", "SELL"):
         raise HTTPException(400, "side must be BUY or SELL")
     if body.quantity <= 0:
         raise HTTPException(400, "quantity must be positive")
 
-    portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, body.market)
+    try:
+        portfolio = await portfolio_service.get_or_create_portfolio(session_key, db, body.market)
 
-    # Format ticker with exchange suffix (e.g., RELIANCE -> RELIANCE.NS for NSE)
-    formatted_ticker = market_service.format_ticker(body.ticker, body.exchange)
+        # Format ticker with exchange suffix (e.g., RELIANCE -> RELIANCE.NS for NSE)
+        formatted_ticker = market_service.format_ticker(body.ticker, body.exchange)
 
-    # Determine fill price
-    if body.use_live_price:
-        try:
-            quote = market_service.get_price_quote(body.ticker, body.exchange)
-            fill_price = quote["price"]
-        except Exception:
-            raise HTTPException(500, "Could not fetch live price")
-    else:
-        if not body.limit_price:
-            raise HTTPException(400, "limit_price required when use_live_price is false")
-        fill_price = body.limit_price
+        # Determine fill price
+        if body.use_live_price:
+            try:
+                quote = market_service.get_fast_quote(body.ticker, body.exchange)
+                fill_price = quote["price"]
+                if not fill_price:
+                    raise ValueError("No price data available")
+            except Exception as e:
+                log.error(f"Failed to fetch live price for {body.ticker} on {body.exchange}: {e}")
+                raise HTTPException(500, "Could not fetch live price")
+        else:
+            if not body.limit_price:
+                raise HTTPException(400, "limit_price required when use_live_price is false")
+            fill_price = body.limit_price
 
-    order = await portfolio_service.place_order(
-        portfolio, formatted_ticker, body.side, body.quantity, fill_price, db
-    )
+        order = await portfolio_service.place_order(
+            portfolio, formatted_ticker, body.side, body.quantity, fill_price, db
+        )
 
-    return {
-        "order_id": order.id,
-        "status": order.status,
-        "fill_price": float(order.fill_price),
-        "ticker": order.ticker,
-        "side": order.side,
-        "quantity": order.quantity,
-    }
+        return {
+            "order_id": order.id,
+            "status": order.status,
+            "fill_price": float(order.fill_price),
+            "ticker": order.ticker,
+            "side": order.side,
+            "quantity": order.quantity,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        from app.config import log
+        log.error(f"Order placement failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Order placement failed: {str(e)}")
 
 
 @router.get("/orders")

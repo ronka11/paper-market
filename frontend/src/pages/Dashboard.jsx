@@ -101,8 +101,8 @@ export default function Dashboard() {
 
       {/* ── Individual portfolios ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-        <PortfolioPanel title="US PORTFOLIO" portfolio={usPort} currency="$" />
-        <PortfolioPanel title="IN PORTFOLIO" portfolio={inPort} currency="₹" />
+        <PortfolioPanel title="US PORTFOLIO" portfolio={usPort} currency="$" market="US" />
+        <PortfolioPanel title="IN PORTFOLIO" portfolio={inPort} currency="₹" market="IN" />
       </div>
       
 
@@ -181,9 +181,12 @@ function IndexPanel({ title, data }) {
   )
 }
 
-function PortfolioPanel({ title, portfolio, currency }) {
+function PortfolioPanel({ title, portfolio, currency, market = "US" }) {
   if (!portfolio) return null
   const positions = portfolio.positions || []
+
+  // Infer exchange from market: IN -> NSE, US -> US
+  const defaultExchange = market === "IN" ? "NSE" : "US"
 
   return (
     <div className="card">
@@ -199,7 +202,7 @@ function PortfolioPanel({ title, portfolio, currency }) {
         ? <p className="muted" style={{ fontSize: "12px" }}>no positions</p>
         : positions.map(pos => (
           <div key={pos.ticker} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
-            <Link to={`/ticker/${pos.ticker}`} style={{ color: "var(--text-primary)" }}>{pos.ticker}</Link>
+            <Link to={`/ticker/${pos.ticker}?exchange=${defaultExchange}`} style={{ color: "var(--text-primary)" }}>{pos.ticker}</Link>
             <span>{pos.quantity} shares</span>
             <span className={pos.unrealised_pnl >= 0 ? "up" : "down"}>
               {pos.unrealised_pnl >= 0 ? "+" : ""}{pos.unrealised_pnl.toFixed(2)}

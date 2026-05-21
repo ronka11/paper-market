@@ -9,7 +9,7 @@ router = APIRouter()
 @router.websocket("/prices")
 async def live_prices(websocket: WebSocket):
     """
-    Client sends: {"tickers": ["AAPL", "TSLA"]}
+    Client sends: {"tickers": ["AAPL", "RELIANCE.NS"]}
     Server streams: {"ticker": "AAPL", "price": 189.5, "change_pct": 1.2}
     every 3 seconds while connection is open.
     """
@@ -38,14 +38,22 @@ async def live_prices(websocket: WebSocket):
                     prev  = fi.previous_close
                     change_pct = ((price - prev) / prev * 100) if prev else 0
 
-                    await websocket.send_json({
-                        "ticker":     ticker,
-                        "price":      round(price, 4) if price else None,
-                        "change_pct": round(change_pct, 3),
-                    })
+                    try:
+                        await websocket.send_json({
+                            "ticker":     ticker,
+                            "price":      round(price, 4) if price else None,
+                            "change_pct": round(change_pct, 3),
+                        })
+                    except (WebSocketDisconnect, RuntimeError):
+                        # Connection closed
+                        return
+
                 except Exception:
                     # Ticker failed — send null so frontend knows
-                    await websocket.send_json({"ticker": ticker, "price": None, "change_pct": None})
+                    try:
+                        await websocket.send_json({"ticker": ticker, "price": None, "change_pct": None})
+                    except (WebSocketDisconnect, RuntimeError):
+                        return
 
             await asyncio.sleep(3)
 

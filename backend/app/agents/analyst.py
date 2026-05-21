@@ -51,17 +51,18 @@ async def get_price_history(ticker: str, exchange: str = "US") -> str:
 
 
 @tool
-async def get_portfolio_context(session_key: str) -> str:
-    """Get current portfolio positions for context."""
+async def get_portfolio_context(session_key: str, market: str = "US") -> str:
+    """Get current portfolio positions for context. Market is 'US' or 'IN'."""
     import asyncio
     from app.database import AsyncSessionLocal
     from app.services.portfolio import get_or_create_portfolio, get_positions
 
     async with AsyncSessionLocal() as db:
-        portfolio = await get_or_create_portfolio(session_key, db)
+        portfolio = await get_or_create_portfolio(session_key, db, market)
         positions = await get_positions(portfolio.id, db)
         result = {
             "cash_balance": float(portfolio.cash_balance),
+            "market": market,
             "positions": [
                 {"ticker": p.ticker, "quantity": p.quantity, "avg_cost": float(p.avg_cost)}
                 for p in positions
@@ -124,19 +125,24 @@ tool_node = ToolNode(tools)
 async def analyst_node(state: AgentState):
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    system = SystemMessage(content="""You are a professional financial analyst assistant for a paper trading app.
+    # Determine market from exchange
+    market = "IN" if state["exchange"] in ("NSE", "BSE") else "US"
+
+    system = SystemMessage(content=f"""You are a professional financial analyst assistant for a paper trading app.
 You have access to price history, latest news and portfolio context tools.
 
+TICKER: {state['ticker']} on {state['exchange']} exchange (market: {market})
+
 ANALYSIS INSTRUCTIONS:
-1. Always fetch price history first using get_price_history
-2. Fetch recent news using get_ticker_news_tool and use it to inform sentiment signal
-3. Fetch portfolio context using get_portfolio_context
+1. Always fetch price history first using get_price_history, passing exchange="{state['exchange']}"
+2. Fetch recent news using get_ticker_news_tool with exchange="{state['exchange']}"
+3. Fetch portfolio context using get_portfolio_context with market="{market}" to see relevant holdings
 4. After gathering all data, return ONLY a valid JSON object with NO additional text or markdown.
 
 JSON RESPONSE FORMAT (must be valid JSON, no markdown, no extra text):
-{
+{{
   "ticker": "string",
-  "exchange": "string", 
+  "exchange": "string",
   "latest_price": number,
   "trend_7d_pct": number,
   "trend_direction": "up" or "down",
@@ -144,7 +150,7 @@ JSON RESPONSE FORMAT (must be valid JSON, no markdown, no extra text):
   "stance": "bull" or "bear" or "neutral",
   "summary": "string (3-4 sentences, plain English)",
   "confidence": "low" or "medium" or "high"
-}
+}}
 
 CRITICAL: After gathering all required data, output ONLY the JSON object. Do NOT make additional tool calls. Do NOT include any markdown formatting. Output valid JSON only.""")
 

@@ -75,12 +75,12 @@ export default function TickerView() {
       .catch(() => setAnalysis({ error: "could not load" }))
       .finally(() => setAnalysisLoading(false))
 
-    fetchOrders(sessionKey, market).then(all =>setOrders(all.filter(o => o.ticker === baseTicker)))
+    fetchOrders(sessionKey, market).then(all =>setOrders(all.filter(o => o.ticker === formattedTicker)))
     fetchTickerNews(baseTicker, exchange, sessionKey).then(setTickerNews).catch(() => [])
     fetchPriceTargets(baseTicker, exchange, sessionKey).then(setTargets).catch(() => null)
     fetchUpgradesDowngrades(baseTicker, exchange, sessionKey).then(setUpgrades).catch(() => [])
     fetchRecommendations(baseTicker, exchange, sessionKey).then(setRecs).catch(() => {})
-  }, [baseTicker, exchange, sessionKey])
+  }, [baseTicker, exchange, sessionKey, formattedTicker, market])
 
   async function refreshAnalysis() {
     setAnalysisLoading(true)
@@ -93,8 +93,8 @@ export default function TickerView() {
   }
 
   function reloadOrders() {
-    fetchOrders(sessionKey).then(all =>
-      setOrders(all.filter(o => o.ticker === baseTicker))
+    fetchOrders(sessionKey, market).then(all =>
+      setOrders(all.filter(o => o.ticker === formattedTicker))
     )
   }
 

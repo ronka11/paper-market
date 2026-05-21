@@ -127,7 +127,7 @@ async def place_order(
 
 
 async def _get_position(
-        portfolio_id: str, 
+        portfolio_id: str,
         ticker: str,
         db: AsyncSession):
     result = await db.execute(
@@ -137,7 +137,21 @@ async def _get_position(
             Position.ticker == ticker
         )
     )
-    return result.scalar_one_or_none()
+    position = result.scalar_one_or_none()
+
+    # If not found and ticker has suffix, also check without suffix (for legacy positions)
+    if not position and (ticker.endswith(".NS") or ticker.endswith(".BO")):
+        base_ticker = ticker.replace(".NS", "").replace(".BO", "")
+        result = await db.execute(
+            select(Position).
+            where(
+                Position.portfolio_id == portfolio_id,
+                Position.ticker == base_ticker
+            )
+        )
+        position = result.scalar_one_or_none()
+
+    return position
 
 
 async def _upsert_position_buy(
